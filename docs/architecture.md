@@ -26,6 +26,7 @@ flowchart LR
 ## Data Flow
 
 1. Script computes date range (`--start-date`/`--end-date`, or incremental from existing file).
-2. For each date, the API is called with `sittingDate=DD-MM-YYYY`.
+2. For each date, the API is called with a JSON POST body `{"sittingDate": "DD-MM-YYYY"}`. Non-sitting days return HTTP 500 and are skipped.
 3. Valid responses are transformed into a normalized row schema.
-4. New rows are merged with existing data, deduplicated by date, then written to Excel.
+4. Each sitting's full debate text is written to `hansard_text/YYYY-MM-DD.txt`.
+5. New rows are merged with existing data, deduplicated by date, then written to Excel (long text cells keep a 32,767-character preview).

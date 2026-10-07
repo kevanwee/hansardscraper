@@ -11,7 +11,8 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-API_URL = "https://sprs.parl.gov.sg/search/getHansardReport/"
+# The search site POSTs {"sittingDate": "DD-MM-YYYY"} here (no trailing slash); the old GET form now always fails
+API_URL = "https://sprs.parl.gov.sg/search/getHansardReport"
 DEFAULT_MASTER_FILE = "hansard_master.xlsx"
 DEFAULT_START_DATE = "01-01-2020"
 DATE_FORMAT = "%d-%m-%Y"
@@ -34,6 +35,12 @@ def parse_args() -> argparse.Namespace:
         "--master-file",
         default=DEFAULT_MASTER_FILE,
         help=f"Excel output file path (default: {DEFAULT_MASTER_FILE}).",
+    )
+    parser.add_argument(
+        "--text-dir",
+        default="hansard_text",
+        help="Folder for each sitting's full debate text as YYYY-MM-DD.txt (default: hansard_text). "
+        "Excel cells hold at most 32,767 characters, so the spreadsheet keeps only a preview.",
     )
     parser.add_argument(
         "--full-rescrape",
@@ -85,9 +92,9 @@ def html_to_text(html: str | None) -> str:
 
 def fetch_report(session: requests.Session, sitting_date: str) -> dict[str, Any] | None:
     try:
-        response = session.get(
+        response = session.post(
             API_URL,
-            params={"sittingDate": sitting_date},
+            json={"sittingDate": sitting_date},
             timeout=30,
         )
     except requests.RequestException as exc:
@@ -261,6 +268,15 @@ def main() -> int:
                 continue
 
             row = build_row(date_str, payload)
+            # The full debate goes to its own file; a sitting's text is far longer than an Excel cell holds
+            full_text = row["DebateText"]
+            os.makedirs(args.text_dir, exist_ok=True)
+            text_path = os.path.join(args.text_dir, f"{current_date.isoformat()}.txt")
+            with open(text_path, "w", encoding="utf-8") as handle:
+                handle.write(full_text)
+            row["DebateTextChars"] = len(full_text)
+            row["DebateTextTruncated"] = len(full_text) > EXCEL_CELL_CHAR_LIMIT
+            row["TextFile"] = text_path
             new_rows.append(row)
             scraped_dates += 1
             print(f"[OK] Scraped {date_str} ({row['SectionCount']} sections).")

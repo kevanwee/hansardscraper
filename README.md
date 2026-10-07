@@ -4,9 +4,9 @@ A reliable Singapore Parliamentary Hansard scraper that pulls daily report JSON 
 
 ## What this project does
 
-- Scrapes Hansard report data by date from `https://sprs.parl.gov.sg/search/getHansardReport/`.
+- Scrapes Hansard report data by date from the SPRS API (`POST https://sprs.parl.gov.sg/search/getHansardReport` with `{"sittingDate": "DD-MM-YYYY"}`, the same call the official search site makes).
 - Parses section HTML content into clean text.
-- Stores one row per sitting date in `hansard_master.xlsx`.
+- Stores one row per sitting date in `hansard_master.xlsx`, and each sitting's full debate text in `hansard_text/YYYY-MM-DD.txt` (an Excel cell holds at most 32,767 characters, so the spreadsheet keeps a preview, the length and the file path).
 - Supports incremental updates by continuing from the latest date already in the master file.
 - Handles non-sitting dates gracefully.
 
